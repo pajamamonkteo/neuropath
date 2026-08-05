@@ -2,3 +2,7 @@ node_modules/
 .next/
 .pnpm-store/
 *.tsbuildinfo
+.env
+.env.local
+.env.*
+!.env.example

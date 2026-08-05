@@ -27,8 +27,16 @@ export type ProjectTask = {
   description: string;
   estimatedTime: string;
   position: number;
+  dayNumber: number;
+  scheduledDate?: string;
+  status: 'pending' | 'active' | 'completed' | 'skipped';
   completed: boolean;
   completedAt: string | null;
+  quizScore?: {
+    correct: number;
+    total: number;
+  };
+  confidence?: 'low' | 'medium' | 'high';
 };
 
 export type ProjectDraft = {

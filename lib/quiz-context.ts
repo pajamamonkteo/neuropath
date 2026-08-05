@@ -1,8 +1,17 @@
-import { QuizProjectType } from './quiz';
+import type { QuizProjectType } from './quiz';
 
 export type QuizTaskSource = { title: string; description: string; completed: boolean; quizTopic?: string; quizSkills?: string[] };
-export type QuizContext = { subject: string; topic: string; skills: string[]; sourceText: string; questionCount: number; difficulty: 'easy' | 'medium' | 'hard' };
+export type QuizSourceMode = 'general_knowledge' | 'provided_material';
+export type QuizContext = { subject: string; topic: string; skills: string[]; sourceText: string; sourceMode: QuizSourceMode; questionCount: number; difficulty: 'easy' | 'medium' | 'hard' };
 export type QuizSourceType = 'topic' | 'notes' | 'sample_quiz' | 'worksheet' | 'study_guide' | 'unknown';
+
+export type QuizSourceDecision = {
+  mode: QuizSourceMode;
+  canGenerate: boolean;
+  stronglyRecommendMaterial: boolean;
+};
+
+export const GENERAL_KNOWLEDGE_NOTICE = 'No notes were supplied, so this quiz will use general knowledge about the topic. Add notes if you want questions based on a specific class or source.';
 
 const placeholderTopic = /^(topic|chapter|unit|module)\s*\d+\b|^(review material|study guide|practice questions|current task|assignment|project|quiz preparation)$/i;
 const activityWords = /\b(practice|review|study|complete|prepare|work on|solve \d+ problems?|questions?)\b/gi;
@@ -10,6 +19,32 @@ const topicHint = /(?:about|on|from|covering|for)\s+(.{3,80})/i;
 
 function cleanTopic(value = '') { return value.replace(activityWords, '').replace(/^[-:–—\s]+|[-:–—\s]+$/g, '').trim(); }
 function validTopic(value: string) { return value.length >= 3 && !placeholderTopic.test(value); }
+
+const vagueTopic = /^(math|mathematics|science|history|english|school|class|test|exam|homework|stuff|something|general knowledge)$/i;
+const commonSingleWordTopic = /^(photosynthesis|algebra|geometry|calculus|mitosis|meiosis|respiration|ecosystems?|evolution|thermodynamics|electricity|magnetism|democracy|colonialism)$/i;
+const sourceSpecificTopic = /\b(textbook|chapter|unit|module|teacher(?:-created)?|class handout|worksheet|syllabus|curriculum|course material)\b/i;
+
+export function isClearGeneralKnowledgeTopic(topic: string): boolean {
+  const normalized = topic.trim().replace(/\s+/g, ' ');
+  if (!validTopic(normalized) || vagueTopic.test(normalized)) return false;
+  const meaningfulWords = normalized.match(/[a-z0-9]+(?:[-'][a-z0-9]+)*/gi) ?? [];
+  if (meaningfulWords.length >= 2 && normalized.length >= 8) return true;
+  return commonSingleWordTopic.test(normalized);
+}
+
+export function determineQuizSource(topic: string, providedMaterial: string): QuizSourceDecision {
+  const hasProvidedMaterial = Boolean(providedMaterial.trim());
+  if (hasProvidedMaterial) {
+    const usefulMaterial = providedMaterial.trim().length >= 20 || classifyQuizSource(providedMaterial, topic) !== 'unknown';
+    return { mode: 'provided_material', canGenerate: usefulMaterial || isClearGeneralKnowledgeTopic(topic), stronglyRecommendMaterial: !usefulMaterial };
+  }
+  const clearTopic = isClearGeneralKnowledgeTopic(topic);
+  return {
+    mode: 'general_knowledge',
+    canGenerate: clearTopic,
+    stronglyRecommendMaterial: Boolean(topic.trim()) && (!clearTopic || sourceSpecificTopic.test(topic)),
+  };
+}
 
 /** Detects structurally useful material without requiring prose notes or a manual chapter title. */
 export function classifyQuizSource(material = '', topic = ''): QuizSourceType {
@@ -39,12 +74,13 @@ export function deriveQuizContext(input: { title: string; description: string; r
   const sourceText = supplied.trim();
   const enoughGrounding = Boolean(sourceText.length >= 20 || (validTopic(topic) && /\b(limit|derivative|integral|equation|formula|vocabulary|definition|grammar|translation)\b/i.test(topic)) || skills.length > 0);
   if (!validTopic(topic) || !enoughGrounding) return null;
-  return { subject: input.projectType, topic, skills, sourceText, questionCount: input.questionCount, difficulty: 'medium' };
+  return { subject: input.projectType, topic, skills, sourceText, sourceMode: sourceText ? 'provided_material' : 'general_knowledge', questionCount: input.questionCount, difficulty: 'medium' };
 }
 
 export function isInvalidQuizPrompt(prompt: string, context: QuizContext) {
   if (/\b(stud(y|ying)|review(ing)?|practi[cs](e|ing)?|plan(ning)?|clarity|time management|take a quiz|before solving)\b/i.test(prompt)) return true;
   if (placeholderTopic.test(prompt)) return true;
+  if (context.sourceMode === 'general_knowledge') return false;
   // Rich pasted material is the grounding source; model wording need not repeat the manually entered topic verbatim.
   if (context.sourceText.replace(/\s/g, '').length >= 100) return false;
   const concepts = [context.topic, ...context.skills].map((item) => item.toLowerCase()).filter((item) => item.length > 3);

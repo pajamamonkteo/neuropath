@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { box-sizing: border-box; }
+body { background: #FAF7F2; color: #292536; font-family: Arial, Helvetica, sans-serif; }
+button, input, select, textarea { font: inherit; }
+:focus-visible { outline: 3px solid #6846B5; outline-offset: 3px; }
+@layer components {
+ .card { @apply rounded-3xl bg-white p-5 shadow-[0_2px_12px_rgba(45,37,64,0.06)]; }
+ .label { @apply mb-2 block text-sm font-semibold text-[#514B5C]; }
+ .field { @apply w-full rounded-2xl border border-[#DED8E6] bg-white px-4 py-3 text-base placeholder:text-[#90899A] focus:border-plum focus:outline-none; }
+ .eyebrow { @apply text-sm font-semibold text-plum; }
+}

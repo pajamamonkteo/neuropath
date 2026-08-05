@@ -15,11 +15,11 @@ function task(overrides: Partial<ScheduledProjectTask> & Pick<ScheduledProjectTa
     status: overrides.status ?? 'pending',
     completed: overrides.completed ?? false,
     completedAt: overrides.completedAt ?? null,
-    subtasks: overrides.subtasks ?? [{ title: 'Practice', estimatedMinutes: 20 }],
+    subtasks: overrides.subtasks ?? [{ id: `${overrides.id}-step`, title: 'Practice', estimatedMinutes: 20, completed: false, required: true }],
   };
 }
 
-test('skipping a task keeps it incomplete', () => {
+test('Stop for now keeps the task incomplete', () => {
   const tasks = [task({ id: 'one', position: 1, scheduledDate: '2026-08-05', status: 'active' })];
   const [skipped] = markTaskSkipped(tasks, 'one');
 
@@ -56,4 +56,20 @@ test('completed tasks and their completion dates do not change during rollover',
   assert.equal(completed?.status, 'completed');
   assert.equal(completed?.completed, true);
   assert.equal(completed?.completedAt, completedAt);
+});
+
+test('rollover preserves checked and unchecked subtask states', () => {
+  const tasks = [task({
+    id: 'mixed',
+    position: 1,
+    scheduledDate: '2026-08-05',
+    status: 'skipped',
+    subtasks: [
+      { id: 'checked', title: 'Checked', estimatedMinutes: 5, completed: true, required: true },
+      { id: 'unchecked', title: 'Unchecked', estimatedMinutes: 5, completed: false, required: true },
+    ],
+  })];
+  const result = rescheduleUnfinishedTasks(tasks, 'move', '2026-08-05', '2026-08-10');
+
+  assert.deepEqual(result.tasks[0].subtasks.map((item) => item.completed), [true, false]);
 });

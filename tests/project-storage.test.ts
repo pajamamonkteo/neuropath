@@ -21,7 +21,7 @@ test('task rollover state persists after a simulated page refresh', () => {
     id: 'project-one',
     title: 'Biology',
     attachments: [],
-    tasks: [{ id: 'task-one', title: 'Photosynthesis', status: 'pending', completed: false, completedAt: null, scheduledDate: '2026-08-06', dayNumber: 2 }],
+    tasks: [{ id: 'task-one', title: 'Photosynthesis', status: 'pending', completed: false, completedAt: null, scheduledDate: '2026-08-06', dayNumber: 2, subtasks: [{ id: 'read', title: 'Read', estimatedMinutes: 5, completed: true, required: true }, { id: 'practice', title: 'Practice', estimatedMinutes: 10, completed: false, required: true }] }],
   };
 
   saveProjectState([project], project.id);
@@ -32,4 +32,6 @@ test('task rollover state persists after a simulated page refresh', () => {
   assert.equal(savedTask.status, 'pending');
   assert.equal(savedTask.completed, false);
   assert.equal(savedTask.scheduledDate, '2026-08-06');
+  const savedSubtasks = savedTask.subtasks as Record<string, unknown>[];
+  assert.deepEqual(savedSubtasks.map((subtask) => subtask.completed), [true, false]);
 });

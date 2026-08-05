@@ -1,11 +1,11 @@
-import type { ProjectTask } from './storage';
+import type { ProjectTask, Subtask } from './storage';
 
 export type RolloverChoice = 'move' | 'keep' | 'lighter';
 
 export type ScheduledProjectTask = ProjectTask & {
   dayNumber: number;
   scheduledDate: string;
-  subtasks: { title: string; estimatedMinutes: number }[];
+  subtasks: Subtask[];
 };
 
 export type RolloverResult<T extends ScheduledProjectTask> = {

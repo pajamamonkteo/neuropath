@@ -32,11 +32,20 @@ export type ProjectTask = {
   status: 'pending' | 'active' | 'completed' | 'skipped';
   completed: boolean;
   completedAt: string | null;
+  subtasks: Subtask[];
   quizScore?: {
     correct: number;
     total: number;
   };
   confidence?: 'low' | 'medium' | 'high';
+};
+
+export type Subtask = {
+  id: string;
+  title: string;
+  estimatedMinutes: number;
+  completed: boolean;
+  required?: boolean;
 };
 
 export type ProjectDraft = {

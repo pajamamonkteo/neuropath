@@ -17,7 +17,6 @@ type EvaluationRecord = { id: string; projectId: string; taskId: string; type: E
 type IntakeProject = { id: string; title: string; deadline: string; description: string; rubricText: string; projectGoal: ProjectGoal | null; attachments: Attachment[]; tasks: PlannedTask[]; currentTaskIndex: number; projectSummary: string; assumptions: string[]; planSource: 'ai' | null; projectType: ProjectType | null; evaluationType: EvaluationType | null; evaluations: EvaluationRecord[] };
 const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'image/png', 'image/jpeg'];
 const maxFileSize = 10 * 1024 * 1024;
-const welcomeStorageKey = 'neuropath-welcome-seen';
 const newProject = (): IntakeProject => ({ id: createId('project'), title: '', deadline: '', description: '', rubricText: '', projectGoal: null, attachments: [], tasks: [], currentTaskIndex: 0, projectSummary: '', assumptions: [], planSource: null, projectType: null, evaluationType: null, evaluations: [] });
 const normalizeTaskStatuses = (tasks: PlannedTask[]): PlannedTask[] => { let activeAssigned = false; return tasks.slice().sort((a, b) => a.position - b.position).map((task) => { const completed = Boolean(task.completed || task.status === 'completed'); const skipped = task.status === 'skipped'; const status = completed ? 'completed' : skipped ? 'skipped' : !activeAssigned ? 'active' : 'pending'; if (status === 'active') activeAssigned = true; return { ...task, completed, completedAt: completed ? task.completedAt : null, status }; }); };
 const normalizeProjectEvaluation = (item: IntakeProject): IntakeProject => { const projectGoal = projectGoals.includes(item.projectGoal as ProjectGoal) ? item.projectGoal as ProjectGoal : 'general_study'; const evaluationType = evaluationTypeForGoal(projectGoal, item.rubricText); return { ...item, projectGoal, tasks: normalizeTaskStatuses(item.tasks.map((task) => ({ ...task, evaluationType }))), evaluationType }; };
@@ -29,30 +28,15 @@ const formatType = (file?: File) => file?.name.split('.').pop()?.toUpperCase() ?
 function Primary({ children, onClick, disabled = false, type = 'button' }: { children: React.ReactNode; onClick?: () => void; disabled?: boolean; type?: 'button' | 'submit' }) { return <button type={type} disabled={disabled} onClick={onClick} className="min-h-12 w-full rounded-2xl bg-gradient-to-r from-[#744CC3] to-[#59369F] px-5 py-3 font-bold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-none disabled:bg-[#C8C3CC] disabled:text-[#655E6D] disabled:opacity-100 disabled:shadow-none">{children}</button>; }
 function Secondary({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) { return <button type="button" onClick={onClick} className="min-h-12 w-full rounded-2xl border border-[#D8D1E2] bg-white px-4 py-3 font-semibold text-[#443D50] hover:bg-[#F5F1FA]">{children}</button>; }
 function Header({ back }: { back?: () => void }) { return <header className="mb-7 flex items-center justify-between gap-4"><div className="flex min-w-0 items-center gap-2"><div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-plum text-white">⌁</div><b className="truncate text-xl">NeuroPath</b></div>{back && <button type="button" onClick={back} className="shrink-0 rounded-xl px-3 py-2 text-sm font-semibold text-plum hover:bg-lavender">Back</button>}</header>; }
-function Shell({ children, back }: { children: React.ReactNode; back?: () => void }) {
-  const [showWelcome, setShowWelcome] = useState(false);
+type WelcomeControls = { show: boolean; onDismiss: () => void; onStartPlanning: () => void };
+function Shell({ children, back, welcome }: { children: React.ReactNode; back?: () => void; welcome?: WelcomeControls }) {
+  const showWelcome = Boolean(welcome?.show);
   const welcomeDialogRef = useRef<HTMLDivElement>(null);
   const welcomeActionRef = useRef<HTMLButtonElement>(null);
-
-  const dismissWelcome = useCallback(() => {
-    try {
-      window.localStorage.setItem(welcomeStorageKey, 'true');
-    } catch {
-      // The modal can still close when browser storage is unavailable.
-    }
-    setShowWelcome(false);
-  }, []);
+  const dismissWelcome = welcome?.onDismiss;
 
   useEffect(() => {
-    try {
-      if (window.localStorage.getItem(welcomeStorageKey) !== 'true') setShowWelcome(true);
-    } catch {
-      setShowWelcome(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!showWelcome) return;
+    if (!showWelcome || !dismissWelcome) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const focusFrame = window.requestAnimationFrame(() => welcomeActionRef.current?.focus());
@@ -88,7 +72,7 @@ function Shell({ children, back }: { children: React.ReactNode; back?: () => voi
     <main className="mx-auto min-h-screen max-w-xl overflow-x-hidden px-5 py-6 pb-28 sm:px-7 sm:pb-16"><Header back={back} />{children}</main>
     {showWelcome && <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#292536]/50 p-4 sm:p-6">
       <div ref={welcomeDialogRef} role="dialog" aria-modal="true" aria-labelledby="welcome-title" aria-describedby="welcome-description" onKeyDown={keepFocusInWelcome} className="relative my-auto max-h-[calc(100vh-2rem)] w-full max-w-lg overflow-y-auto rounded-3xl bg-cream p-5 shadow-[0_20px_60px_rgba(41,37,54,0.24)] sm:p-7">
-        <button type="button" onClick={dismissWelcome} aria-label="Close welcome" className="absolute right-4 top-4 grid h-11 w-11 place-items-center rounded-xl text-2xl leading-none text-[#655E6D] hover:bg-lavender hover:text-plum sm:right-5 sm:top-5">×</button>
+        <button type="button" onClick={() => dismissWelcome?.()} aria-label="Close welcome" className="absolute right-4 top-4 grid h-11 w-11 place-items-center rounded-xl text-2xl leading-none text-[#655E6D] hover:bg-lavender hover:text-plum sm:right-5 sm:top-5">×</button>
         <div className="pr-12">
           <p className="eyebrow">WELCOME</p>
           <h1 id="welcome-title" className="mt-1 text-3xl font-bold tracking-tight">Welcome to NeuroPath</h1>
@@ -97,7 +81,7 @@ function Shell({ children, back }: { children: React.ReactNode; back?: () => voi
         <ol className="mt-6 space-y-3">
           {['Add your project and deadline', 'Let NeuroPath create your plan', 'Complete today’s steps and track your progress'].map((step, index) => <li key={step} className="flex items-center gap-3 rounded-2xl bg-white p-4"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-lavender text-sm font-bold text-plum">{index + 1}</span><span className="font-semibold text-[#443D50]">{step}</span></li>)}
         </ol>
-        <button ref={welcomeActionRef} type="button" onClick={dismissWelcome} aria-label="Start planning" className="mt-7 min-h-12 w-full rounded-2xl bg-gradient-to-r from-[#744CC3] to-[#59369F] px-5 py-3 font-bold text-white shadow-sm">Start planning</button>
+        <button ref={welcomeActionRef} type="button" onClick={() => welcome?.onStartPlanning()} aria-label="Start planning" className="mt-7 min-h-12 w-full rounded-2xl bg-gradient-to-r from-[#744CC3] to-[#59369F] px-5 py-3 font-bold text-white shadow-sm">Start planning</button>
       </div>
     </div>}
   </>;
@@ -129,6 +113,7 @@ export default function Home() {
   const [previousProjects, setPreviousProjects] = useState<IntakeProject[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [welcomeDismissedForSession, setWelcomeDismissedForSession] = useState(false);
   const startingProjectRef = useRef(false);
   const confirmingPlanRef = useRef(false);
   const insertedProjectIds = useRef(new Set<string>());
@@ -172,7 +157,9 @@ export default function Home() {
   const tasks = useMemo(() => [...project.tasks].sort((a, b) => a.position - b.position), [project.tasks]);
   const currentTask = tasks.find((task) => task.status !== 'completed' && task.status !== 'skipped' && !task.completed);
   const hasActiveProject = Boolean(project.title.trim() && activeProjectId);
+  const projects = useMemo(() => [...(hasActiveProject ? [project] : []), ...previousProjects], [hasActiveProject, project, previousProjects]);
   const hasCurrentTask = hasActiveProject && tasks.length > 0 && Boolean(currentTask);
+  const showWelcome = hydrated && projects.length === 0 && !welcomeDismissedForSession;
   const activeEvaluationType = evaluationTypeForGoal(project.projectGoal ?? 'general_study', project.rubricText);
   const quizEligible = activeEvaluationType === 'quiz';
   const openEvaluation = () => { setEvaluationType(activeEvaluationType); setEvaluationResponses({}); setEvaluationEvidence(''); setEvaluationTime(''); setConfidence(undefined); setMarkEvaluationComplete(false); setEvaluationError(''); if (activeEvaluationType === 'quiz') { setQuizError(''); setQuizQuestions([]); setQuizAnswers([]); setQuizResult(null); go('quizSetup'); } else go('evaluation'); };
@@ -191,6 +178,8 @@ export default function Home() {
   const completeTask = () => { if (!currentTask) return; if (!canCompleteTask(currentTask)) { setTaskCompletionError(REQUIRED_SUBTASKS_MESSAGE); return; } setTaskCompletionError(''); setEvaluationType(activeEvaluationType); setEvaluationResponses({}); setEvaluationEvidence(''); setEvaluationTime(''); setConfidence(undefined); setMarkEvaluationComplete(true); setEvaluationError(''); go(activeEvaluationType === 'quiz' ? 'quizSetup' : 'evaluation'); };
   const skipCurrentTask = () => { if (!currentTask) return; setProject((current) => ({ ...current, tasks: normalizeTaskStatuses(markTaskSkipped(current.tasks, currentTask.id)) })); setTaskCompletionError(''); setRolloverMessage(''); setRolloverOpen(true); go('map'); };
   const resetForNewProject = () => { if (startingProjectRef.current) return; startingProjectRef.current = true; setProject((current) => { if (current.title.trim()) setPreviousProjects((projects) => { if (projects.some((item) => item.id === current.id)) { if (process.env.NODE_ENV === 'development') console.warn('Duplicate project ID insertion blocked:', current.id); return projects; } insertedProjectIds.current.add(current.id); return [...projects, current]; }); return newProject(); }); setActiveProjectId(null); setFileError(''); setMessage(''); go('create'); window.setTimeout(() => { startingProjectRef.current = false; }, 0); };
+  const dismissWelcomeForSession = useCallback(() => setWelcomeDismissedForSession(true), []);
+  const startPlanningFromWelcome = () => { dismissWelcomeForSession(); resetForNewProject(); };
   const openProject = (id: string) => { const all = [project, ...previousProjects]; const selected = all.find((item) => item.id === id); if (!selected) return; setProject(selected); setPreviousProjects(all.filter((item) => item.id !== id)); setActiveProjectId(id); go('dashboard'); };
   const showProjectHistory = (id: string) => { const all = [project, ...previousProjects]; const selected = all.find((item) => item.id === id); if (!selected) return; setProject(selected); setPreviousProjects(all.filter((item) => item.id !== id)); setActiveProjectId(id); setHistoryOpen(true); setScreen('dashboard'); };
   const deleteProject = (id: string) => { if (!window.confirm('Delete this project? This cannot be undone.')) return; const all = [project, ...previousProjects].filter((item) => item.id !== id); const next = all[0]; setProject(next ?? newProject()); setPreviousProjects(next ? all.slice(1) : []); setActiveProjectId(next?.id ?? null); };
@@ -252,7 +241,7 @@ export default function Home() {
     finally { setQuizLoading(false); }
   };
   if (!hydrated) return <main className="min-h-screen bg-cream" />;
-  if (screen === 'dashboard') return <Shell><h1 className="text-3xl font-bold tracking-tight">Your projects.</h1>{message && <div role="status" className="mt-5 rounded-2xl bg-sage p-4 text-sm font-semibold text-[#24533B]">✓ {message}</div>}{hasCurrentTask && <section className="mt-6 rounded-3xl bg-gradient-to-br from-[#6E48BD] to-[#4F3293] p-6 text-white"><p className="text-sm font-semibold text-[#E5DDF9]">TODAY’S SESSION</p><h2 className="mt-3 break-words text-2xl font-bold">{currentTask?.title}</h2><p className="mt-1 text-[#E5DDF9]">{project.title} · {currentTask?.estimatedTime}</p><div className="mt-6"><Primary onClick={() => go('energy')}>Start session</Primary></div></section>}<div className="mt-9 flex items-center justify-between gap-4"><h2 className="text-xl font-bold">Projects</h2><button onClick={resetForNewProject} className="shrink-0 font-bold text-plum">Create project</button></div><div className="mt-4 space-y-4">{[...(hasActiveProject ? [project] : []), ...previousProjects].map((item) => <div key={item.id} className={item.id === activeProjectId ? 'rounded-3xl ring-2 ring-plum' : ''}><ProjectProgressCard project={item} /><div className="mt-2 grid grid-cols-2 gap-2"><Secondary onClick={() => openProject(item.id)}>Open project</Secondary><Secondary onClick={() => showProjectHistory(item.id)}>Task History</Secondary></div>{item.id === activeProjectId && <div className="mt-2"><Secondary onClick={() => go('map')}>Project map</Secondary></div>}</div>)}</div>{!hasActiveProject && !previousProjects.length && <article className="card mt-4"><b>No project created yet</b><p className="mt-3 text-sm text-[#615A6B]">Create a project to see your plan.</p></article>}{historyOpen && <TaskHistoryModal project={project} onClose={() => setHistoryOpen(false)} />}</Shell>;
+  if (screen === 'dashboard') return <Shell welcome={{ show: showWelcome, onDismiss: dismissWelcomeForSession, onStartPlanning: startPlanningFromWelcome }}><h1 className="text-3xl font-bold tracking-tight">Your projects.</h1>{message && <div role="status" className="mt-5 rounded-2xl bg-sage p-4 text-sm font-semibold text-[#24533B]">✓ {message}</div>}{hasCurrentTask && <section className="mt-6 rounded-3xl bg-gradient-to-br from-[#6E48BD] to-[#4F3293] p-6 text-white"><p className="text-sm font-semibold text-[#E5DDF9]">TODAY’S SESSION</p><h2 className="mt-3 break-words text-2xl font-bold">{currentTask?.title}</h2><p className="mt-1 text-[#E5DDF9]">{project.title} · {currentTask?.estimatedTime}</p><div className="mt-6"><Primary onClick={() => go('energy')}>Start session</Primary></div></section>}<div className="mt-9 flex items-center justify-between gap-4"><h2 className="text-xl font-bold">Projects</h2><button onClick={resetForNewProject} className="shrink-0 font-bold text-plum">Create project</button></div><div className="mt-4 space-y-4">{projects.map((item) => <div key={item.id} className={item.id === activeProjectId ? 'rounded-3xl ring-2 ring-plum' : ''}><ProjectProgressCard project={item} /><div className="mt-2 grid grid-cols-2 gap-2"><Secondary onClick={() => openProject(item.id)}>Open project</Secondary><Secondary onClick={() => showProjectHistory(item.id)}>Task History</Secondary></div>{item.id === activeProjectId && <div className="mt-2"><Secondary onClick={() => go('map')}>Project map</Secondary></div>}</div>)}</div>{projects.length === 0 && <article className="card mt-4"><b>No project created yet</b><p className="mt-3 text-sm text-[#615A6B]">Create a project to see your plan.</p></article>}{historyOpen && <TaskHistoryModal project={project} onClose={() => setHistoryOpen(false)} />}</Shell>;
   if (screen === 'map') return <Shell back={() => go('dashboard')}><p className="eyebrow">PROJECT MAP</p><h1 className="mt-1 break-words text-3xl font-bold">{project.title}</h1><div className="mt-5 grid gap-3 sm:grid-cols-2"><Secondary onClick={() => go('create')}>Edit project details</Secondary><Secondary onClick={() => go('planReview')}>Edit plan</Secondary><Secondary onClick={() => setHistoryOpen(true)}>Task History</Secondary>{rolloverCandidates.length > 0 && <Secondary onClick={() => { setRolloverMessage(''); setRolloverOpen(true); }}>End day / reschedule unfinished tasks</Secondary>}{currentTask && <Secondary onClick={openEvaluation}>{evaluationLabel[activeEvaluationType]}</Secondary>}</div><div className="mt-7">{tasks.map((task) => <TaskNode key={task.id} task={task} current={task.id === currentTask?.id} />)}</div><Primary disabled={!currentTask} onClick={() => go('energy')}>Start current task</Primary>{historyOpen && <TaskHistoryModal project={project} onClose={() => setHistoryOpen(false)} />}{rolloverOpen && <div className="fixed inset-0 z-50 flex items-end bg-[#292536]/40 sm:items-center sm:justify-center" role="dialog" aria-modal="true" aria-labelledby="rollover-title" onClick={() => setRolloverOpen(false)}><section className="w-full rounded-t-3xl bg-cream p-5 shadow-xl sm:max-w-xl sm:rounded-3xl sm:p-7" onClick={(event) => event.stopPropagation()}><div className="flex items-start justify-between gap-4"><div><p className="eyebrow">SCHEDULE CHECK</p><h2 id="rollover-title" className="mt-1 text-2xl font-bold">Unfinished-task rollover</h2></div><button onClick={() => setRolloverOpen(false)} className="rounded-xl bg-white px-3 py-2 text-sm font-bold text-plum">Close</button></div>{rolloverMessage ? <><p role="status" className="mt-5 rounded-2xl bg-sage p-4 text-sm font-semibold text-[#24533B]">{rolloverMessage}</p><div className="mt-5"><Primary onClick={() => setRolloverOpen(false)}>Done</Primary></div></> : <><p className="mt-3 text-sm text-[#615A6B]">{rolloverCandidates.length} unfinished task{rolloverCandidates.length === 1 ? '' : 's'} can be adjusted. Completed work will stay unchanged.</p><div className="mt-6 space-y-3"><Primary onClick={() => applyRollover('move')}>Move to the next study day</Primary><Secondary onClick={() => applyRollover('lighter')}>Create a lighter recovery plan</Secondary><Secondary onClick={() => applyRollover('keep')}>Leave tasks where they are</Secondary></div><p className="mt-4 text-xs text-[#655E6D]">NeuroPath keeps the project deadline when realistically possible and explains any deadline risk.</p></>}</section></div>}</Shell>;
   if (screen === 'quiz') {
     const question = quizQuestions[quizIndex];

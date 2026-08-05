@@ -143,14 +143,15 @@ one format for everything:
 
 | Work type                          | Evaluation style      |
 |-------------------------------------|------------------------|
-| Factual knowledge                   | Quiz                  |
+| Factual knowledge                   | Practice log / reflection |
 | Math or technical skills            | Practice problems      |
 | Essay or research paper             | Rubric review / reflection |
 | Presentation, design, code, portfolio | Deliverable review  |
 | General progress check              | Reflection             |
 
-Never generate a multiple-choice quiz for an essay or creative
-project.
+Quiz creation is an optional, user-initiated tool. Never add or
+recommend quizzes in plans, daily tasks, check-ins, or completion
+flows, including for factual-knowledge projects.
 
 ===================================================================
 8. PLANNING PROCESS (RUN THIS BEFORE RETURNING A PLAN)

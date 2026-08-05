@@ -5,7 +5,8 @@ export type EvaluationType = 'quiz' | 'rubric-review' | 'deliverable-review' | '
 /** MVP routing is deterministic. Project and task text is never inspected. */
 export function evaluationTypeForGoal(goal: ProjectGoal, rubricText = ''): EvaluationType {
   switch (goal) {
-    case 'quiz_exam': return 'quiz';
+    // Quizzes are an optional tool, never the default check-in or completion flow.
+    case 'quiz_exam': return 'practice';
     case 'essay_report': return rubricText.trim() ? 'rubric-review' : 'reflection';
     case 'presentation':
     case 'project_portfolio': return 'deliverable-review';

@@ -211,17 +211,18 @@ button:disabled { cursor: not-allowed; }
 .task-node.is-complete .task-node-card { background: var(--success-soft); }
 
 .intake-form, .evaluation-form { display: grid; gap: 22px; border: 1px solid rgba(208,201,216,.7); border-radius: 22px; background: rgba(255,255,255,.72); padding: 24px; box-shadow: var(--shadow-card); }
-.form-section-heading { display: flex; align-items: center; gap: 13px; padding-bottom: 15px; border-bottom: 1px solid var(--border); }
-.form-section-heading:not(:first-child) { margin-top: 8px; }
-.form-section-heading > span { display: grid; width: 36px; height: 36px; flex: 0 0 auto; place-items: center; border-radius: 11px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 850; }
-.form-section-heading h2 { margin: 0; font-size: 18px; letter-spacing: -.02em; }
-.form-section-heading p { margin: 1px 0 0; color: var(--ink-soft); font-size: 13px; }
+.form-section-heading { padding-top: 26px; border-top: 1px solid rgba(208,201,216,.72); }
+.form-section-heading:first-child { padding-top: 0; border-top: 0; }
+.form-section-heading:not(:first-child) { margin-top: 6px; }
+.form-section-heading h2 { margin: 0; font-size: 19px; letter-spacing: -.025em; }
+.form-section-heading p { margin: 4px 0 0; color: var(--ink-soft); font-size: 13px; line-height: 1.5; }
 .file-drop { display: grid; min-height: 138px; cursor: pointer; place-items: center; border: 1.5px dashed var(--border-strong); border-radius: 16px; background: #fbfafc; padding: 20px; color: var(--accent); text-align: center; }
 .file-drop > span { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 10px; background: var(--accent-soft); font-size: 20px; }
 .file-drop strong { margin-top: 8px; }
 .file-drop small { color: var(--ink-muted); font-size: 12px; }
 .source-upload { border: 1px dashed var(--border-strong); border-radius: 16px; background: #fbfafc; padding: 18px; }
 .sticky-actions { display: grid; gap: 10px; margin-top: 28px; }
+.intake-form > .sticky-actions { margin-top: 0; }
 .action-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
 .review-sheet { overflow: hidden; border: 1px solid rgba(208,201,216,.8); border-radius: 20px; background: var(--surface); box-shadow: var(--shadow-card); }

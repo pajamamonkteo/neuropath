@@ -26,7 +26,7 @@ export function saveProjectState(projects: unknown[], activeProjectId: string | 
   if (typeof window === 'undefined') return;
   const serializableProjects = projects.map((project) => {
     const record = project as Record<string, unknown>;
-    return { ...record, attachments: Array.isArray(record.attachments) ? record.attachments.map((attachment) => { const item = attachment as Record<string, unknown>; return { id: item.id, name: item.name, type: item.type, size: item.size }; }) : [] };
+    return { ...record, attachments: Array.isArray(record.attachments) ? record.attachments.map((attachment) => { const item = attachment as Record<string, unknown>; return { id: item.id, name: item.name, type: item.type, size: item.size, status: item.status, message: item.message }; }) : [] };
   });
   window.localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify({ version: VERSION, projects: serializableProjects, activeProjectId }));
 }

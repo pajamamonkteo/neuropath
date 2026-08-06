@@ -1,6 +1,7 @@
 import type { ProjectTask, Subtask } from './storage';
 
 export type RolloverChoice = 'move' | 'keep' | 'lighter';
+export type RolloverTimeChoice = 'keep-time' | 'remove-time';
 
 export type ScheduledProjectTask = ProjectTask & {
   dayNumber: number;
@@ -52,6 +53,7 @@ export function rescheduleUnfinishedTasks<T extends ScheduledProjectTask>(
   choice: Exclude<RolloverChoice, 'keep'>,
   today: string,
   deadline: string,
+  timeChoice: RolloverTimeChoice = 'keep-time',
 ): RolloverResult<T> {
   const overdue = tasksReadyForRollover(tasks, today);
   if (!overdue.length) return { tasks, explanation: 'There are no unfinished tasks due today or earlier.' };
@@ -88,8 +90,13 @@ export function rescheduleUnfinishedTasks<T extends ScheduledProjectTask>(
           subtasks: task.subtasks.map((subtask) => ({ ...subtask, estimatedMinutes: Math.max(3, Math.round(subtask.estimatedMinutes * 0.75)) })),
         }
       : task;
+    const dateChanged = scheduledDate !== task.scheduledDate;
+    const timeFields = dateChanged && timeChoice === 'remove-time' && task.scheduledTime
+      ? { scheduledTime: undefined, preferredWorkPeriod: 'none' as const, reminderOffsetMinutes: null }
+      : {};
     updatedById.set(task.id, {
       ...lighterTask,
+      ...timeFields,
       scheduledDate,
       dayNumber: Math.max(1, dayDifference(firstScheduledDate, scheduledDate) + 1),
       status: 'pending',
@@ -109,9 +116,14 @@ export function rescheduleUnfinishedTasks<T extends ScheduledProjectTask>(
   const summary = choice === 'lighter'
     ? `${count} unfinished task${overdue.length === 1 ? ' was' : 's were'} spread across upcoming study days, with supported task sizes reduced.`
     : `${count} unfinished task${overdue.length === 1 ? ' was' : 's were'} moved to the next study day.`;
+  const timeNote = timeChoice === 'remove-time' && overdue.some((task) => Boolean(task.scheduledTime))
+    ? ' Exact times were removed from moved timed tasks.'
+    : overdue.some((task) => Boolean(task.scheduledTime))
+      ? ' Existing task times were kept.'
+      : '';
 
   return {
     tasks: updatedTasks,
-    explanation: `${summary} Completed tasks were not changed.${deadlineNote}`,
+    explanation: `${summary}${timeNote} Completed tasks were not changed.${deadlineNote}`,
   };
 }

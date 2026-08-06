@@ -12,6 +12,10 @@ function task(overrides: Partial<ScheduledProjectTask> & Pick<ScheduledProjectTa
     position: overrides.position,
     dayNumber: overrides.dayNumber ?? overrides.position,
     scheduledDate: overrides.scheduledDate,
+    scheduledTime: overrides.scheduledTime,
+    timezone: overrides.timezone,
+    reminderOffsetMinutes: overrides.reminderOffsetMinutes,
+    preferredWorkPeriod: overrides.preferredWorkPeriod,
     status: overrides.status ?? 'pending',
     completed: overrides.completed ?? false,
     completedAt: overrides.completedAt ?? null,
@@ -72,4 +76,23 @@ test('rollover preserves checked and unchecked subtask states', () => {
   const result = rescheduleUnfinishedTasks(tasks, 'move', '2026-08-05', '2026-08-10');
 
   assert.deepEqual(result.tasks[0].subtasks.map((item) => item.completed), [true, false]);
+});
+
+test('rolling a timed task forward keeps its exact time by default', () => {
+  const tasks = [task({ id: 'timed', position: 1, scheduledDate: '2026-08-05', scheduledTime: '19:30', timezone: 'Asia/Singapore', status: 'skipped' })];
+  const result = rescheduleUnfinishedTasks(tasks, 'move', '2026-08-05', '2026-08-10');
+
+  assert.equal(result.tasks[0].scheduledDate, '2026-08-06');
+  assert.equal(result.tasks[0].scheduledTime, '19:30');
+  assert.equal(result.tasks[0].timezone, 'Asia/Singapore');
+});
+
+test('rolling a timed task forward can leave its time unscheduled', () => {
+  const tasks = [task({ id: 'timed', position: 1, scheduledDate: '2026-08-05', scheduledTime: '19:30', preferredWorkPeriod: 'specific', reminderOffsetMinutes: 15, status: 'skipped' })];
+  const result = rescheduleUnfinishedTasks(tasks, 'move', '2026-08-05', '2026-08-10', 'remove-time');
+
+  assert.equal(result.tasks[0].scheduledDate, '2026-08-06');
+  assert.equal(result.tasks[0].scheduledTime, undefined);
+  assert.equal(result.tasks[0].preferredWorkPeriod, 'none');
+  assert.equal(result.tasks[0].reminderOffsetMinutes, null);
 });

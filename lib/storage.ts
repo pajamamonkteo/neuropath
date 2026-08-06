@@ -21,6 +21,9 @@ export type Project = {
   createdAt: string;
 };
 
+export type PreferredWorkPeriod = 'none' | 'morning' | 'afternoon' | 'evening' | 'specific';
+export type ReminderOffsetMinutes = 0 | 15 | 30 | 60 | null;
+
 export type ProjectTask = {
   id: string;
   title: string;
@@ -29,6 +32,10 @@ export type ProjectTask = {
   position: number;
   dayNumber: number;
   scheduledDate?: string;
+  scheduledTime?: string;
+  timezone?: string;
+  reminderOffsetMinutes?: ReminderOffsetMinutes;
+  preferredWorkPeriod?: PreferredWorkPeriod;
   status: 'pending' | 'active' | 'completed' | 'skipped';
   completed: boolean;
   completedAt: string | null;
